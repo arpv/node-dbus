@@ -1,0 +1,10 @@
+{
+  "name": "node-dbus",
+  "description": "A minimal node based wrapper over libdbus",
+  "version": "0.1.0",
+  "engine": [ "node >=0.4.8" ],
+  "scripts": {
+    "install": "node-waf configure build install"
+  },
+  "main": "dbus.js"
+}
