@@ -18,7 +18,7 @@ which is used to perform the afore-mentioned chores with some restrictions
 as mentioned under the relevant api description.
 
 It has currently been tested only on the 32-bit [Ubuntu Lucid Lynx][LL] and
-64-bit [Fedora15][F15] GNOME releases.
+64-bit [Fedora15][F15] GNOME releases and thus should be good for other distros too.
 
 License: BSD
 ===============

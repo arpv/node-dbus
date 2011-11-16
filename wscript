@@ -9,7 +9,7 @@ from os.path import splitext
 
 srcdir = "."
 blddir = "build"
-VERSION = "0.0.1"
+VERSION = "0.1.0"
 
 def set_options(opt):
   opt.tool_options("compiler_cxx")
