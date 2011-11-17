@@ -7,7 +7,7 @@
  * </copyright>
  * */
 
-var dbus = require('../dbus'),
+var dbus = require('../../node-dbus'),
 http = require('http');
 
 var dbusMonitorSignal = Object.create(dbus.DBusMessage, {

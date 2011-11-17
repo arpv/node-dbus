@@ -7,7 +7,7 @@
  * </copyright>
  * */
 
-var dbus = require('../dbus');
+var dbus = require('../../node-dbus');
 
 var dbusMsg = Object.create(dbus.DBusMessage, {
   destination: {

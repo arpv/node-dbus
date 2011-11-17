@@ -89,16 +89,13 @@ mechanism to listen to signals (only) which are sent over the message bus.
 
 It is an instance of nodejs' [EventEmitter][].
 
-It can be be accessed as:
+It can be accessed as:
 
-    var msg = require('[path/to]dbus').DBusMessage;
+    var dbus = require('[path/to]node-dbus');
 
-or for added convinience of exported dbus constants,
+and then inherit your object from `dbus.DBusMessage` as per your preference. For example:
 
-    var dbus = require('[path/to]dbus');
-    var msg = dbus.DBusMessage;
-
-and then inherit your object from `msg`.
+    var msg = Object.create(dbus.DBusMessage, {...});
 
 Properties:
 ---------------
