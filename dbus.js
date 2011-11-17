@@ -55,7 +55,7 @@ exports.DBusMessage = Object.create(events.EventEmitter.prototype, {
   },
   closeConnection: {
     value: function () {
-      msgBus = this.bus;
+      var msgBus = this.bus;
       process.nextTick(function(){binding.deinit(msgBus);});
     }
   },
