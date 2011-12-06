@@ -8,6 +8,10 @@
       "Pierre Frisch <pierre.frisch@motorola.com>",
       "Kris Kowal <kris.kowal@motorola.com>"
   ],
+  "repository": { 
+    "type" : "git",
+    "url": "http://github.com/Motorola-Mobility/node-dbus.git"
+  },
   "engines": ["node >= 0.5.1"],
   "scripts": {
     "install": "node-waf configure build install"
