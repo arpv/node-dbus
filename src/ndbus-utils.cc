@@ -477,18 +477,17 @@ NDbusIsMatchAdded (GSList *list, Local<Object> obj) {
 Local<Value>
 NDbusRetrieveMessageArgs(DBusMessage *msg) {
   DBusMessageIter msg_iter;
+  Local<Array> args_array = Array::New();
   if (dbus_message_iter_init(msg, &msg_iter)) {
     gint i = 0;
-    Local<Array> args_array = Array::New();
     while (dbus_message_iter_get_arg_type(&msg_iter) !=
         DBUS_TYPE_INVALID) {
       args_array->Set(i++,
           NDbusExtractMessageArgs(&msg_iter));
       dbus_message_iter_next(&msg_iter);
     }
-    return args_array;
   }
-  return Local<Value>(*Undefined());
+  return args_array;
 }
 
 gchar*

@@ -336,8 +336,8 @@ Handle<Value> NDbusInvokeMethod (const Arguments & args) {
       NDBUS_SET_EXCPN(argv[1], error.name, error.message);
       dbus_error_free(&error);
     } else {
-      Local<Value> args = NDbusRetrieveMessageArgs(reply);
-      argv[0] = args;
+      Local<Value> msg_args = NDbusRetrieveMessageArgs(reply);
+      argv[0] = msg_args;
       argv[1] = Local<Value> (*Undefined());
       dbus_message_unref(reply);
     }
