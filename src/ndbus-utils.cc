@@ -551,9 +551,14 @@ NDbusMessageAppendArgs (DBusMessage *msg,
 
     while (i < args->Length()) {
       gchar *sign = dbus_signature_iter_get_signature(&sigiter);
+      if(sign == NULL) {
+        g_free(signature);
+        NDBUS_SET_EXCPN(*error, DBUS_ERROR_NO_MEMORY, NDBUS_ERROR_OOM);
+        return FALSE;
+      }
       gint status = NDbusMessageAppendArgsReal(&iter, sign,
           (args->Get(i++)));
-
+      dbus_free(sign);
       if (status < SUCCESS) {
         g_free(signature);
         if (status == TYPE_MISMATCH)
