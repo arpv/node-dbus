@@ -184,6 +184,112 @@ NDbusExtractMessageArgs (DBusMessageIter *reply_iter) {
   return scope.Close(ret);
 }
 
+/**
+ * Creates a signature string for parameters of type "variant". This string will
+ * become a part of the parameter.
+ *
+ * @param value variant value for which to generate the signature
+ * @param status status of the operation, eg. SUCCESS, OF_MEMORY, etc
+ * @param buffer private - do NOT use! Memory where the signature will be stored.
+ * @param index private - do NOT use! The current position within the buffer, when signature is created.
+ * @return the generated signature or NULL on error. Use g_free to release the signature after use.
+ */
+static char*
+NDbusCreateSignatureForVariant(Local<Value> value, gint &status, gchar* buffer, gint &index) {
+  // allocate memory for the signature, if necessary
+  gboolean cleanUp = FALSE;
+  if (buffer == NULL) {
+      // fill up with zeros, so that we'll be able to construct signature at the beginning
+      // of the buffer and the signature will always be a NULL terminated string.
+      buffer = g_try_new0(gchar, DBUS_MAXIMUM_SIGNATURE_LENGTH);
+      if(buffer == NULL) {
+        status = OUT_OF_MEMORY;
+        return NULL;
+      }
+      index = 0; // just in case
+      cleanUp = TRUE; // in case of error, we'll have to release memory
+  }
+
+  if (value->IsArray()) {
+    // make sure the signature is not too long. We'll need at least 2 characters for array:
+    // 1 char for array and 1 for the type of elements
+    if (index + 2 > DBUS_MAXIMUM_SIGNATURE_LENGTH - 1) {
+      status = OUT_OF_MEMORY;
+      if(cleanUp) {
+        g_free(buffer);
+      }
+      return NULL;
+    }
+
+    Local<Array> array = Local<Array>::Cast(value);
+    buffer[index++] = DBUS_TYPE_ARRAY;
+    if (array->Length()) {
+      NDbusCreateSignatureForVariant(array->Get(0), status, buffer, index);
+    } else {
+      // array is empty, so we cannot infer the type of elements - we'll just use a string.
+      buffer[index++] = DBUS_TYPE_STRING;
+    }
+  } else if(value->IsObject()) {
+    // make sure the signature is not too long. We'll need at least 5 characters for a map:
+    // 1 char for array, 2 for brackets, 1 for key and 1 for value
+    if (index + 5 > DBUS_MAXIMUM_SIGNATURE_LENGTH - 1) {
+      status = OUT_OF_MEMORY;
+      if(cleanUp) {
+        g_free(buffer);
+      }
+      return NULL;
+    }
+    Local<Object> obj = Local<Object>::Cast(value);
+    Local<Array> properties = obj->GetOwnPropertyNames();
+    buffer[index++] = 'a';
+    buffer[index++] = '{';
+    buffer[index++] = 's'; // keys of objects are strings in JS.
+    if(properties->Length()) {
+        NDbusCreateSignatureForVariant(obj->Get(properties->Get(0)), status, buffer, index);
+        // we do not know how many characters did the method above added, so we have
+        // to check, if we can still add the closing bracket
+        if (index + 1 > DBUS_MAXIMUM_SIGNATURE_LENGTH - 1) {
+          status = OUT_OF_MEMORY;
+          if(cleanUp) {
+            g_free(buffer);
+          }
+          return NULL;
+        }
+    } else {
+      buffer[index++] = 's'; // no properties in this object, so we'll assume values are strings
+    }
+    buffer[index++] = '}';
+  } else {
+    // make sure the signature is not too long
+    if (index + 1 > DBUS_MAXIMUM_SIGNATURE_LENGTH - 1) {
+      status = OUT_OF_MEMORY;
+      if(cleanUp) {
+        g_free(buffer);
+      }
+      return NULL;
+    }
+
+    if (value->IsString()) {
+      buffer[index++] = DBUS_TYPE_STRING;
+    } else if (value->IsInt32()) {
+      buffer[index++] = DBUS_TYPE_INT32;
+    } else if (value->IsUint32()) {
+      buffer[index++] = DBUS_TYPE_UINT32;
+    } else if (value->IsNumber()) {
+      buffer[index++] = DBUS_TYPE_DOUBLE;
+    } else if (value->IsBoolean()) {
+      buffer[index++] = DBUS_TYPE_BOOLEAN;
+    } else {
+        status = TYPE_NOT_SUPPORTED;
+        if(cleanUp) {
+          g_free(buffer);
+        }
+        return NULL;
+    }
+  }
+  return buffer;
+}
+
 static gint
 NDbusMessageAppendArgsReal (DBusMessageIter * iter,
     const gchar *signature, Local<Value> value) {
@@ -367,37 +473,25 @@ NDbusMessageAppendArgsReal (DBusMessageIter * iter,
     case DBUS_TYPE_VARIANT:
       {
         DBusMessageIter subiter;
-        gchar vsignature[2];
-        vsignature[0] = 0;
-
-        if (value->IsString()) {
-          vsignature[0] = DBUS_TYPE_STRING;
-          vsignature[1] = '\0';
-        } else if (value->IsInt32()) {
-          vsignature[0] = DBUS_TYPE_INT32;
-          vsignature[1] = '\0';
-        } else if (value->IsBoolean()) {
-          vsignature[0] = DBUS_TYPE_BOOLEAN;
-          vsignature[1] = '\0';
+        gint status = SUCCESS;
+        gint index = 0;
+        // this method should not require the last 2 params (NULL and index)
+        gchar* vsignature = NDbusCreateSignatureForVariant(value, status, NULL, index);
+        if(status != SUCCESS) {
+          return status;
         }
 
-        if (vsignature[0]) {
-          if (!dbus_message_iter_open_container
-              (iter, DBUS_TYPE_VARIANT, vsignature, &subiter)) {
-            g_free(vsignature);
-            return OUT_OF_MEMORY;
-          }
-
-          gint status = NDbusMessageAppendArgsReal(&subiter,
-              vsignature, value);
-          if (status != SUCCESS) {
-            g_free(vsignature);
-            return status;
-          }
-
-          dbus_message_iter_close_container(iter, &subiter);
-        } else
-          return TYPE_MISMATCH;
+        if (!dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT, vsignature, &subiter)) {
+          g_free(vsignature);
+          return OUT_OF_MEMORY;
+        }
+        status = NDbusMessageAppendArgsReal(&subiter, vsignature, value);
+        if (status != SUCCESS) {
+          g_free(vsignature);
+          return status;
+        }
+        g_free(vsignature);
+        dbus_message_iter_close_container(iter, &subiter);
         break;
       }
     default:
