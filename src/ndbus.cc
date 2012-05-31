@@ -183,6 +183,9 @@ Handle<Value> NDbusAddMatch (const Arguments & args) {
 Handle<Value> NDbusSendSignal (const Arguments & args) {
   HandleScope scope;
 
+  NDbusVariantPolicy variantPolicy = (NDbusVariantPolicy)NDbusGetProperty(args.This(),
+        NDBUS_PROPERTY_VARIANT_POLICY)->IntegerValue();
+
   gint message_type =
     NDbusGetProperty(args.This(),
         NDBUS_PROPERTY_TYPE)->IntegerValue();
@@ -227,7 +230,7 @@ Handle<Value> NDbusSendSignal (const Arguments & args) {
     NDBUS_EXCPN_OOM;
 
   Local<Object> append_error;
-  if (!NDbusMessageAppendArgs (msg, args.This(), &append_error)) {
+  if (!NDbusMessageAppendArgs (msg, args.This(), &append_error, variantPolicy)) {
     dbus_message_unref(msg);
     return ThrowException(append_error);
   }
@@ -244,6 +247,9 @@ Handle<Value> NDbusSendSignal (const Arguments & args) {
 
 Handle<Value> NDbusInvokeMethod (const Arguments & args) {
   HandleScope scope;
+
+  NDbusVariantPolicy variantPolicy = (NDbusVariantPolicy)NDbusGetProperty(args.This(),
+        NDBUS_PROPERTY_VARIANT_POLICY)->IntegerValue();
 
   gint message_type =
     NDbusGetProperty(args.This(),
@@ -298,7 +304,7 @@ Handle<Value> NDbusInvokeMethod (const Arguments & args) {
     NDBUS_EXCPN_OOM;
 
   Local<Object> append_error;
-  if (!NDbusMessageAppendArgs (msg, args.This(), &append_error)) {
+  if (!NDbusMessageAppendArgs (msg, args.This(), &append_error, variantPolicy)) {
     dbus_message_unref(msg);
     return ThrowException(append_error);
   }
@@ -438,6 +444,9 @@ extern "C" void init (Handle<Object> target) {
   NODE_DEFINE_CONSTANT(constants, DBUS_MESSAGE_TYPE_METHOD_RETURN);
   NODE_DEFINE_CONSTANT(constants, DBUS_MESSAGE_TYPE_ERROR);
   NODE_DEFINE_CONSTANT(constants, DBUS_MESSAGE_TYPE_SIGNAL);
+
+  NODE_DEFINE_CONSTANT(constants, NDBUS_VARIANT_POLICY_DEFAULT);
+  NODE_DEFINE_CONSTANT(constants, NDBUS_VARIANT_POLICY_SIMPLE);
 
   NDBUS_DEFINE_STRING_CONSTANT(constants, DBUS_SERVICE_DBUS);
   NDBUS_DEFINE_STRING_CONSTANT(constants, DBUS_PATH_DBUS);

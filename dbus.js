@@ -61,6 +61,9 @@ exports.DBusMessage = Object.create(events.EventEmitter.prototype, {
   timeout: {
     value: -1
   },
+  variantPolicy: {
+    value: binding.constants.NDBUS_VARIANT_POLICY_DEFAULT
+  },
   closeConnection: {
     value: function () {
       var msgBus = this.bus;
