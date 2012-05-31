@@ -738,11 +738,18 @@ NDbusMessageFilter (DBusConnection *cnxn,
       g_free(key);
 
       if (NDbusIsValidV8Array(object_list)) {
+        Local<Object> signal = Object::New();
+        signal->Set(String::New("iface"), String::New(interface));
+        signal->Set(String::New("member"), String::New(member));
+        signal->Set(String::New("path"), object_path ? String::New(object_path) : Null());
+        signal->Set(String::New("sender"), sender ? String::New(sender) : Null());
+        signal->Set(String::New("destination"), destination ? String::New(destination) : Null());
         Local<Value> args = NDbusRetrieveMessageArgs(message);
-        const gint argc = 2;
-        Local<Value> argv[2];
+        const gint argc = 3;
+        Local<Value> argv[argc];
         argv[0] = object_list;
-        argv[1] = args;
+        argv[1] = signal;
+        argv[2] = args;
         Local<Function> func = Local<Function>::
           Cast(global_target->Get(NDBUS_CB_SIGNALRECEIPT));
 
