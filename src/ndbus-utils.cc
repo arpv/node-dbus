@@ -220,15 +220,8 @@ NDbusCreateSignatureForVariant(Local<Value> value, gint &status, gchar* buffer, 
       }
       return NULL;
     }
-
-    Local<Array> array = Local<Array>::Cast(value);
     buffer[index++] = DBUS_TYPE_ARRAY;
-    if (array->Length()) {
-      NDbusCreateSignatureForVariant(array->Get(0), status, buffer, index);
-    } else {
-      // array is empty, so we cannot infer the type of elements - we'll just use a string.
-      buffer[index++] = DBUS_TYPE_STRING;
-    }
+    buffer[index++] = DBUS_TYPE_VARIANT;
   } else if(value->IsObject()) {
     // make sure the signature is not too long. We'll need at least 5 characters for a map:
     // 1 char for array, 2 for brackets, 1 for key and 1 for value
@@ -239,25 +232,10 @@ NDbusCreateSignatureForVariant(Local<Value> value, gint &status, gchar* buffer, 
       }
       return NULL;
     }
-    Local<Object> obj = Local<Object>::Cast(value);
-    Local<Array> properties = obj->GetOwnPropertyNames();
     buffer[index++] = 'a';
     buffer[index++] = '{';
-    buffer[index++] = 's'; // keys of objects are strings in JS.
-    if(properties->Length()) {
-        NDbusCreateSignatureForVariant(obj->Get(properties->Get(0)), status, buffer, index);
-        // we do not know how many characters did the method above added, so we have
-        // to check, if we can still add the closing bracket
-        if (index + 1 > DBUS_MAXIMUM_SIGNATURE_LENGTH - 1) {
-          status = OUT_OF_MEMORY;
-          if(cleanUp) {
-            g_free(buffer);
-          }
-          return NULL;
-        }
-    } else {
-      buffer[index++] = 's'; // no properties in this object, so we'll assume values are strings
-    }
+    buffer[index++] = 's';
+    buffer[index++] = 'v';
     buffer[index++] = '}';
   } else {
     // make sure the signature is not too long
