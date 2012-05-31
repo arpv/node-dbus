@@ -251,24 +251,24 @@ for performance and simplicity.
 
 Read the doc for [`dbus_bus_add_match()`][dbbus] carefully before proceeding further.
 
-It is used for listening to signals only (atleast for now; patches are welcome).
+It is used for listening to signals only (at least for now; patches are welcome).
 The match-rule for filtering the messages on the specified `bus` will be constructed
 internally by node-dbus based on the properties `iface`, `member`, `path`, `sender`
 and `destination` of the message object.
 
 - Properties `iface` and `member` MUST be set
 - whereas `path`, `sender` and `destination` are optional based on your filtering needs.
-- Filtering based on arguments is not supported (atleast for now; patches are welcome).
+- Filtering based on arguments is not supported (at least for now; patches are welcome).
 
 When a match (filter) for a signal is successfully added, node-dbus shall hold a reference
 to the message object until it is `removeMatch()` 'ed.
 
 If an error occurs, event `error` shall be emitted on the message object indicating the
-error occured.
+error occurred.
 
 When a signal that is being listened to is received on the message bus,event `signalReceipt`
-shall be emitted on the message object along with arguments (if any) that were extracted
-from the signal.
+shall be emitted on the message object along with the signal details and arguments (if any)
+that were extracted from the signal.
 
 A match (filter) for a particular signal based on a particular match-rule will be added only once.
 That is, subsequent calls to this api for the same message object will do nothing, unless you
@@ -349,6 +349,7 @@ then you just access them via the standard `arguments` javascript object.
 Emitted on the message object when a signal is received on the message bus, which was
 filtered via the `addMatch()` call.
 
+The first argument is always an object with signal parameters.
 If the signal contains valid data arguments, then those will be supplied to the listener.
 Thus, the signature of the listener depends on the order in which the data arguments are
 expected from the signal. Or if you are unsure, then you just access them via the
