@@ -14,8 +14,8 @@
 
 
 import Options
-from os import unlink, getcwd, listdir
-from os.path import splitext
+from os import unlink, symlink, listdir
+from os.path import splitext, exists
 
 srcdir = "."
 blddir = "build"
@@ -44,7 +44,6 @@ def build(bld):
                  src/ndbus-utils.cc
                  src/ndbus-connection-setup.cc
                  """
-  ndbus.install_path  = getcwd()
 
 def shutdown(bld):
   if Options.commands['clean'] or Options.commands['distclean']:
@@ -52,3 +51,6 @@ def shutdown(bld):
       extn = splitext(binding)[1]
       if extn == '.node':
         unlink('./'+binding)
+  else:
+    if exists('build/Release/ndbus.node') and not exists('ndbus.node'):
+      symlink('build/Release/ndbus.node', 'ndbus.node')
