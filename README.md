@@ -222,7 +222,7 @@ As of now, only the following list of primitive data types from the [D-Bus spec]
 are supported for `appendArgs()` :
 
 boolean, int32, uint32, int64, double, signature, object\_path, string,
-array, dict\_entry (dictionary), and variant (of type int32, string or boolean)
+array, dict\_entry (dictionary), and variant.
 
 **clearArgs()**:
 

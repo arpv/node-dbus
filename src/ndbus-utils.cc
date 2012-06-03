@@ -381,9 +381,6 @@ NDbusMessageAppendArgsReal (DBusMessageIter * iter,
 
           Local<Object> obj = Local<Object>::Cast(value);
           Local<Array> obj_properties = obj->GetOwnPropertyNames();
-          //dont add 'empty' objects; tell me a usecase for it
-          if (!obj_properties->Length())
-            break;
 
           DBusSignatureIter dictsigniter, dictsignsubiter;
           dbus_signature_iter_recurse(&signiter, &dictsigniter);
@@ -446,9 +443,6 @@ NDbusMessageAppendArgsReal (DBusMessageIter * iter,
             return TYPE_MISMATCH;
 
           Local<Array> arr = Local<Array>::Cast(value);
-          //dont add 'empty' arrays; tell me a usecase for it
-          if (!arr->Length())
-            break;
 
           DBusSignatureIter arraysigniter;
           dbus_signature_iter_recurse(&signiter, &arraysigniter);
