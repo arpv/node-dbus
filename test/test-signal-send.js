@@ -34,6 +34,10 @@ var dbusSignal = Object.create(dbus.DBusMessage, {
     value: dbus.DBUS_BUS_SESSION,
     writable: true
   },
+  variantPolicy: {
+    value: dbus.NDBUS_VARIANT_POLICY_DEFAULT,
+    writable: true
+  },
   type: {
     value: dbus.DBUS_MESSAGE_TYPE_SIGNAL
   }
@@ -44,8 +48,11 @@ dbusSignal.on ('error', function (error) {
   console.log (error);
 });
 
-dbusSignal.appendArgs('sviasa{sv}',
-                      'Coming from SESSION Bus!', true, 73,
+dbusSignal.appendArgs('svviasa{sv}',
+                      'Coming from SESSION Bus!',
+                      'non-container variant',
+                      {type:'default variant policy', value:0, mixedPropTypes:true},
+                      73,
                       ['strArray1','strArray2'],
                       {dictPropInt: 31, dictPropStr: 'dictionary', dictPropBool: true});
 //send signal on session bus
@@ -55,10 +62,14 @@ dbusSignal.send();
 
 //switch to system bus and send
 //check signal receipt in 'test-signal-listener' process
-//or on your terminal with $dbus-monitor --session
+//or on your terminal with $dbus-monitor --system
 dbusSignal.bus = dbus.DBUS_BUS_SYSTEM;
-dbusSignal.appendArgs('sviasa{sv}',
-                      'Coming from SYSTEM Bus!', 'variant', 37,
+dbusSignal.variantPolicy = dbus.NDBUS_VARIANT_POLICY_SIMPLE;
+dbusSignal.appendArgs('svviasa{sv}',
+                      'Coming from SYSTEM Bus!',
+                      88,
+                      {type:'simple variant policy', value:'1', mixedPropTypes:'not allowed'},
+                      37,
                       ['strArray3','strArray4'],
                       {dictPropInt: 999999});
 dbusSignal.send();

@@ -27,6 +27,7 @@ namespace ndbus {
 #define NDBUS_PROPERTY_ARGS           "_inputArgs"
 #define NDBUS_PROPERTY_SIGN           "_signature"
 #define NDBUS_PROPERTY_TIMEOUT        "timeout"
+#define NDBUS_PROPERTY_VARIANT_POLICY "variantPolicy"
 
 #define NDBUS_SET_EXCPN(excpn, name, message) \
   {                                           \
@@ -64,6 +65,30 @@ namespace ndbus {
 
 #define NDBUS_CB_METHODREPLY          v8::String::New("onMethodResponse")
 #define NDBUS_CB_SIGNALRECEIPT        v8::String::New("onSignalReceipt")
+
+/**
+ * How should variant in signatures of signals to send be handles.
+ */
+typedef enum {
+    /**
+     * If object or array is passed where variant is expected, then object and array
+     * values are variants themselves.
+     */
+    NDBUS_VARIANT_POLICY_DEFAULT,
+    /**
+     * If object or array is passed where variant is expected, then the first property
+     * of an object or the first element of an array will be inspected to determine
+     * the type of the value. This is in contrast with the default policy, which
+     * would use variant for values.
+     *
+     * This type of handling variants is required by some applications, for example
+     * SetProperty method in Connman.
+     *
+     * Warning! The simple policy is less flexible than the default policy in that
+     * all array or object values must be the same type.
+     */
+    NDBUS_VARIANT_POLICY_SIMPLE
+} NDbusVariantPolicy;
 
 extern "C" {
 
@@ -105,7 +130,8 @@ gboolean NDbusIsMatchAdded                (GSList *list,
                                            Local<Object> obj);
 gboolean NDbusMessageAppendArgs           (DBusMessage *msg,
                                            Local<Object> obj,
-                                           Local<Object> *error);
+                                           Local<Object> *error,
+                                           NDbusVariantPolicy variantPolicy);
 Local<Value> NDbusRetrieveMessageArgs     (DBusMessage *msg);
 void NDbusHandleMethodReply               (DBusPendingCall *pending,
                                            void *user_data);

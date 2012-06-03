@@ -61,6 +61,9 @@ exports.DBusMessage = Object.create(events.EventEmitter.prototype, {
   timeout: {
     value: -1
   },
+  variantPolicy: {
+    value: binding.constants.NDBUS_VARIANT_POLICY_DEFAULT
+  },
   closeConnection: {
     value: function () {
       var msgBus = this.bus;
@@ -140,12 +143,12 @@ binding.onMethodResponse = function (args, error) {
   }
 };
 
-binding.onSignalReceipt = function (objectList, args) {
+binding.onSignalReceipt = function (objectList, signal, args) {
   if (Array.isArray(objectList)) {
     var len = objectList.length,
         i = 0,
         caller;
-    args.unshift('signalReceipt');
+    args.unshift('signalReceipt', signal);
     for (; i<len; i++) {
       caller = objectList[i];
       caller.emit.apply(caller, args);
