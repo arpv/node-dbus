@@ -173,7 +173,7 @@ is expected to contain data which is a container-type (only) such as an array or
 Defaults to `NDBUS_VARIANT_POLICY_DEFAULT` which suggests that the variant's data-signature
 will be `a{sv}` for a dict_entry or `av` for array.
 
-If specified as `NDBUS_VARIANT_POLICY_SIMPLE`, the variant's data signature will contain
+If specified as `NDBUS_VARIANT_POLICY_SIMPLE`, the variant's data-signature will contain
 the *basic* data-type of the *first* property's value of the JS object to be appended. For
 example, if object to be appended is `{a:int b:int}`, the data-signature shall be `a{si}`
 and so on for string's, bool's, array's and object's.
@@ -427,7 +427,7 @@ For property `variantPolicy` of the message object,
 
 - `dbus.NDBUS_VARIANT_POLICY_DEFAULT` = 0
   - Refer to `variantPolicy` property description.
-- `dbus.DBUS_MESSAGE_TYPE_METHOD_CALL` = 1
+- `dbus.NDBUS_VARIANT_POLICY_SIMPLE` = 1
   - Refer to `variantPolicy` property description.
 
 Additionally,
