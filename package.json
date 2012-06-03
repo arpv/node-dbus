@@ -4,17 +4,17 @@
   "version": "0.1.0",
   "author": "Motorola Mobility, Inc.",
   "maintainers": [
-      "Ankur Verma <tcjf78@motorola.com>",
+      "Ankur Verma <ankur.verma@motorola.com>",
       "Pierre Frisch <pierre.frisch@motorola.com>",
       "Kris Kowal <kris.kowal@motorola.com>"
   ],
-  "repository": { 
+  "repository": {
     "type" : "git",
     "url": "http://github.com/Motorola-Mobility/node-dbus.git"
   },
   "engines": ["node >= 0.5.1"],
   "scripts": {
-    "install": "node-waf configure build install"
+    "install": "node-waf configure build"
   },
   "main": "dbus.js"
 }
