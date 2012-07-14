@@ -139,9 +139,10 @@ NDbusExtractMessageArgs (DBusMessageIter *reply_iter) {
 
         gboolean dictionary = (dbus_message_iter_get_arg_type(&sub_iter)
             == DBUS_TYPE_DICT_ENTRY);
+        gint currentType;
         if (dictionary) {
           Local<Object> obj = Object::New();
-          do {
+          while((currentType = dbus_message_iter_get_arg_type (&sub_iter)) != DBUS_TYPE_INVALID) {
             DBusMessageIter dict_iter;
             dbus_message_iter_recurse(&sub_iter, &dict_iter);
 
@@ -154,15 +155,16 @@ NDbusExtractMessageArgs (DBusMessageIter *reply_iter) {
               NDbusExtractMessageArgs(&dict_iter);
 
             obj->Set(key, value, None);
-          } while (dbus_message_iter_next(&sub_iter));
+            dbus_message_iter_next(&sub_iter);
+          }
           ret = obj;
         } else {
           Local<Array> arr = Array::New();
           gint i = 0;
-          do {
-            arr->Set(i++,
-                NDbusExtractMessageArgs(&sub_iter));
-          } while (dbus_message_iter_next(&sub_iter));
+          while((currentType = dbus_message_iter_get_arg_type (&sub_iter)) != DBUS_TYPE_INVALID) {
+            arr->Set(i++, NDbusExtractMessageArgs(&sub_iter));
+            dbus_message_iter_next(&sub_iter);
+          }
           ret = arr;
         }
         break;
