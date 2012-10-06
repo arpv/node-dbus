@@ -1,7 +1,7 @@
 {
   "name": "node-dbus",
   "description": "A minimal node based wrapper over libdbus",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "author": "Motorola Mobility, Inc.",
   "maintainers": [
       "Ankur Verma <ankur.verma@motorola.com>",
