@@ -15,25 +15,29 @@ extern "C" {
 
 static void
 handle_iow_freed (void *data) {
-  ev_io *iow = (ev_io*)data;
+  uv_poll_t *iow = (uv_poll_t*)data;
   if(iow == NULL)
     return;
   iow->data = NULL;
+  g_free(iow);
+  iow = NULL;
 }
 
 static void
-iow_cb (EV_P_ ev_io *w, gint events) {
+iow_cb (uv_poll_t *w, gint status, gint events) {
   DBusWatch *watch = (DBusWatch*)w->data;
   guint dbus_condition = 0;
 
-  if (events & EV_READ)
+  if (events & UV_READABLE)
     dbus_condition |= DBUS_WATCH_READABLE;
-  if (events & EV_WRITE)
+  if (events & UV_WRITABLE)
     dbus_condition |= DBUS_WATCH_WRITABLE;
+#if 0
   if (events & EV_ERROR) {
     dbus_condition |= DBUS_WATCH_ERROR;
     dbus_condition |= DBUS_WATCH_HANGUP;
   }
+#endif
 
   dbus_watch_handle (watch, dbus_condition);
 }
@@ -49,15 +53,15 @@ add_watch (DBusWatch *watch, void *data) {
   gint events = 0;
 
   if (flags & DBUS_WATCH_READABLE)
-    events |= EV_READ;
+    events |= UV_READABLE;
   if (flags & DBUS_WATCH_WRITABLE)
-    events |= EV_WRITE;
+    events |= UV_WRITABLE;
 
-  ev_io *iow = g_new0(ev_io, 1);
+  uv_poll_t *iow = g_new0(uv_poll_t, 1);
   iow->data = (void *)watch;
-  ev_io_init(iow, iow_cb, fd, events);
-  ev_io_start(EV_DEFAULT_UC_ iow);
-  ev_unref(EV_DEFAULT_UC);
+  uv_poll_init(uv_default_loop(), iow, fd);
+  uv_poll_start(iow, events, iow_cb);
+  uv_unref((uv_handle_t *)iow);
 
   dbus_watch_set_data(watch, (void *)iow, handle_iow_freed);
   return true;
@@ -65,14 +69,14 @@ add_watch (DBusWatch *watch, void *data) {
 
 static void
 remove_watch (DBusWatch *watch, void *data) {
-  ev_io* iow = (ev_io*)dbus_watch_get_data(watch);
+  uv_poll_t* iow = (uv_poll_t*)dbus_watch_get_data(watch);
 
   if (iow == NULL)
     return;
 
-  ev_io_stop(EV_DEFAULT_UC_ iow);
-  g_free(iow);
-  iow = NULL;
+  uv_ref((uv_handle_t *)iow);
+  uv_poll_stop(iow);
+  uv_close((uv_handle_t *)iow, NULL);
   dbus_watch_set_data(watch, NULL, NULL);
 }
 
@@ -85,17 +89,19 @@ watch_toggled (DBusWatch *watch, void *data) {
 }
 
 static void
-timeout_cb (EV_P_ ev_timer *w, gint events) {
+timeout_cb (uv_timer_t *w, gint status) {
   DBusTimeout *timeout = (DBusTimeout*)w->data;
   dbus_timeout_handle(timeout);
 }
 
 static void
 handle_timeout_freed (void *data) {
-  ev_timer *timer = (ev_timer*)data;
+  uv_timer_t *timer = (uv_timer_t*)data;
   if(timer == NULL)
     return;
   timer->data =  NULL;
+  g_free(timer);
+  timer = NULL;
 }
 
 static dbus_bool_t
@@ -104,11 +110,10 @@ add_timeout (DBusTimeout *timeout, void *data) {
       || dbus_timeout_get_data(timeout) != NULL)
     return true;
 
-  ev_timer* timer = g_new0(ev_timer, 1);
-  gfloat timeinSeconds = dbus_timeout_get_interval (timeout)/1000.00;
+  uv_timer_t* timer = g_new0(uv_timer_t, 1);
   timer->data = timeout;
-  ev_timer_init (timer, timeout_cb, timeinSeconds, 0.);
-  ev_timer_start (EV_DEFAULT_UC_ timer);
+  uv_timer_init (uv_default_loop(), timer);
+  uv_timer_start (timer, timeout_cb, dbus_timeout_get_interval(timeout), 0);
 
   dbus_timeout_set_data (timeout, (void *)timer, handle_timeout_freed);
   return true;
@@ -116,15 +121,14 @@ add_timeout (DBusTimeout *timeout, void *data) {
 
 static void
 remove_timeout (DBusTimeout *timeout, void *data) {
-  ev_timer *timer =
-    (ev_timer*)dbus_timeout_get_data (timeout);
+  uv_timer_t *timer =
+    (uv_timer_t*)dbus_timeout_get_data (timeout);
 
   if (timer == NULL)
     return;
 
-  ev_timer_stop(EV_DEFAULT_UC_ timer);
-  g_free(timer);
-  timer = NULL;
+  uv_timer_stop(timer);
+  uv_unref((uv_handle_t *)timer);
   dbus_timeout_set_data (timeout, NULL, NULL);
 }
 
@@ -138,12 +142,12 @@ timeout_toggled (DBusTimeout *timeout, void *data) {
 
 static void
 wakeup_ev (void *data) {
-  ev_async* asyncw = (ev_async *)data;
-  ev_async_send(EV_DEFAULT_UC_ asyncw);
+  uv_async_t* asyncw = (uv_async_t *)data;
+  uv_async_send(asyncw);
 }
 
 static void
-asyncw_cb (EV_P_ ev_async *w, gint events) {
+asyncw_cb (uv_async_t *w, gint status) {
   DBusConnection *bus_cnxn = (DBusConnection *)w->data;
   dbus_connection_read_write(bus_cnxn, 0);
   while (dbus_connection_dispatch(bus_cnxn) ==
@@ -166,11 +170,10 @@ NDbusConnectionSetupWithEvLoop (DBusConnection *bus_cnxn) {
       NULL, NULL))
     return false;
 
-  ev_async *asyncw = g_new0(ev_async, 1);
+  uv_async_t *asyncw = g_new0(uv_async_t, 1);
   asyncw->data = (void *)bus_cnxn;
-  ev_async_init(asyncw, asyncw_cb);
-  ev_async_start(EV_DEFAULT_UC_ asyncw);
-  ev_unref(EV_DEFAULT_UC);
+  uv_async_init(uv_default_loop(), asyncw, asyncw_cb);
+  uv_unref((uv_handle_t *)asyncw);
   dbus_connection_set_wakeup_main_function(bus_cnxn,
       wakeup_ev,
       (void *)asyncw, g_free);
