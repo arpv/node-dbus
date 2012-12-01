@@ -383,6 +383,7 @@ Handle<Value> NDbusInit (const Arguments &args) {
     if (!dbus_error_is_set(&error)) {
       dbus_bus_register(bus_cnxn, &error);
     }
+    g_free(address);
   }
 
   if (dbus_error_is_set(&error)) {
