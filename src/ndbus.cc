@@ -365,6 +365,9 @@ Handle<Value> NDbusInit (const Arguments &args) {
 
   gint cnxn_type = NDbusGetProperty(args.This(),
       NDBUS_PROPERTY_BUS)->IntegerValue();
+  gchar *address =
+    NDbusV8StringToCStr(NDbusGetProperty(args.This(),
+          NDBUS_PROPERTY_ADDRESS));
   gboolean sess_bus = (cnxn_type == DBUS_BUS_SESSION);
 
   DBusConnection *bus_cnxn = sess_bus?session_bus:system_bus;
@@ -373,7 +376,14 @@ Handle<Value> NDbusInit (const Arguments &args) {
 
   DBusError error;
   dbus_error_init(&error);
-  bus_cnxn = dbus_bus_get(DBusBusType(cnxn_type), &error);
+  if (address == NULL) {
+    bus_cnxn = dbus_bus_get(DBusBusType(cnxn_type), &error);
+  } else {
+    bus_cnxn = dbus_connection_open(address, &error);
+    if (!dbus_error_is_set(&error)) {
+      dbus_bus_register(bus_cnxn, &error);
+    }
+  }
 
   if (dbus_error_is_set(&error)) {
     Local<Value> exptn;

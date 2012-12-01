@@ -120,6 +120,11 @@ Valid values include:
 Indicates the type of message bus on which the message will be sent.
 Defaults to `DBUS_BUS_SYSTEM`. For using the session bus, set to `DBUS_BUS_SESSION`.
 
+**address**: &lt;String&gt;
+
+The remote address for obtaining a shared dbus connection from the bus. See [`dbus_connection_open()`][dbuscxnopen].
+If not specified, default `bus` address is used.
+
 **destination**: &lt;String&gt;
 
 Name of the service provider that the message should be sent to.
@@ -497,3 +502,4 @@ and error `name` 's,
 [D-Bus spec]: http://dbus.freedesktop.org/doc/dbus-specification.html
 [dbbus]: http://dbus.freedesktop.org/doc/api/html/group__DBusBus.html
 [pnt]: http://nodejs.org/docs/latest/api/process.html#process.nextTick
+[dbuscxnopen]: http://dbus.freedesktop.org/doc/api/html/group__DBusConnection.html#gacd32f819820266598c6b6847dfddaf9c
