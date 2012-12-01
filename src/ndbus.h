@@ -19,6 +19,7 @@ namespace ndbus {
 
 #define NDBUS_PROPERTY_BUS            "bus"
 #define NDBUS_PROPERTY_TYPE           "type"
+#define NDBUS_PROPERTY_ADDRESS        "address"
 #define NDBUS_PROPERTY_DEST           "destination"
 #define NDBUS_PROPERTY_SENDER         "sender"
 #define NDBUS_PROPERTY_PATH           "path"

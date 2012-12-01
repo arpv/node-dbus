@@ -43,6 +43,9 @@ exports.DBusMessage = Object.create(events.EventEmitter.prototype, {
   type: {
     value: binding.constants.DBUS_MESSAGE_TYPE_INVALID
   },
+  address: {
+    value: null
+  },
   sender: {
     value: null
   },
