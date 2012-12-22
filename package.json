@@ -12,7 +12,7 @@
     "type" : "git",
     "url": "http://github.com/Motorola-Mobility/node-dbus.git"
   },
-  "engines": ["node >= 0.5.1"],
+  "engines": ["node >= 0.8.0"],
   "scripts": {
     "install": "node-waf configure build"
   },
