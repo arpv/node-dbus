@@ -15,7 +15,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 </copyright>
 */
 
-var dbus = require('../../node-dbus'),
+var dbus = require('../dbus'),
 http = require('http');
 
 var dbusMonitorSignal = Object.create(dbus.DBusMessage, {

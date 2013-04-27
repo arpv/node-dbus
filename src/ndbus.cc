@@ -443,7 +443,8 @@ Handle<Value> NDbusClose (const Arguments &args) {
   return Undefined();
 }
 
-extern "C" void init (Handle<Object> target) {
+extern "C" {
+void init (Handle<Object> target) {
   HandleScope scope;
   Handle<Object> constants = Object::New();
   target->Set(String::NewSymbol("constants"), constants);
@@ -518,6 +519,8 @@ extern "C" void init (Handle<Object> target) {
   NODE_SET_METHOD(target, "removeMatch", NDbusRemoveMatch);
 
   global_target = Persistent<Object>::New(target);
+}
+NODE_MODULE(ndbus, init);
 }
 }//namespace ndbus
 
