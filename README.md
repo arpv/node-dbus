@@ -77,7 +77,7 @@ if you have source and [NPM][], then from the main folder
 
 otherwise from the main folder of source
 
-    node-waf configure build
+    node-gyp configure build
 
 DBusMessage:
 ===============
