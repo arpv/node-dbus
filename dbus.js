@@ -15,7 +15,7 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 */
 
 var events = require('events'),
-    binding = require('./ndbus'),
+    binding = require('./build/Release/ndbus'),
     prop;
 
 for (prop in binding.constants) {
@@ -32,10 +32,12 @@ if (!Array.isArray) {
 
 exports.DBusMessage = Object.create(events.EventEmitter.prototype, {
   _inputArgs: {
-    value: []
+    value: [],
+    writable: true
   },
   _signature: {
-    value: null
+    value: null,
+    writable: true
   },
   bus: {
     value: binding.constants.DBUS_BUS_SYSTEM
