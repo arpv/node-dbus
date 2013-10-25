@@ -719,16 +719,24 @@ NDbusMessageFilter (DBusConnection *cnxn,
 
       NDbusRetrieveSignalListners(signal_watchers, key, &object_list);
 
+      gchar *tmpKey = NULL;
+      
       if (object_path) {
-        key = g_strconcat(key, "-", object_path, NULL);
+        tmpKey = key;
+        key = g_strconcat(tmpKey, "-", object_path, NULL);
+        g_free(tmpKey);
         NDbusRetrieveSignalListners(signal_watchers, key, &object_list);
       }
       if (sender) {
-        key = g_strconcat(key, "-", sender, NULL);
+        tmpKey = key;
+        key = g_strconcat(tmpKey, "-", sender, NULL);
+        g_free(tmpKey);
         NDbusRetrieveSignalListners(signal_watchers, key, &object_list);
       }
       if (destination) {
-        key = g_strconcat(key, "-", destination, NULL);
+        tmpKey = key;
+        key = g_strconcat(tmpKey, "-", destination, NULL);
+        g_free(tmpKey);
         NDbusRetrieveSignalListners(signal_watchers, key, &object_list);
       }
       g_free(key);
