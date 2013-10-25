@@ -14,13 +14,27 @@ namespace ndbus {
 extern "C" {
 
 static void
+free_later (uv_work_t* req) {
+}
+
+static void
+after_free_later (uv_work_t* req) {
+  if (req->data != NULL) g_free(req->data);
+  g_free(req);
+}
+
+static void
 handle_iow_freed (void *data) {
   uv_poll_t *iow = (uv_poll_t*)data;
   if(iow == NULL)
     return;
   iow->data = NULL;
-  g_free(iow);
-  iow = NULL;
+  uv_ref((uv_handle_t *)iow);
+  uv_poll_stop(iow);
+  uv_close((uv_handle_t *)iow, NULL);
+  uv_work_t *req = g_new0(uv_work_t, 1);
+  req->data = iow;
+  uv_queue_work(uv_default_loop(), req, free_later, (uv_after_work_cb)after_free_later);
 }
 
 static void
@@ -74,9 +88,6 @@ remove_watch (DBusWatch *watch, void *data) {
   if (iow == NULL)
     return;
 
-  uv_ref((uv_handle_t *)iow);
-  uv_poll_stop(iow);
-  uv_close((uv_handle_t *)iow, NULL);
   dbus_watch_set_data(watch, NULL, NULL);
 }
 
@@ -100,8 +111,11 @@ handle_timeout_freed (void *data) {
   if(timer == NULL)
     return;
   timer->data =  NULL;
-  g_free(timer);
-  timer = NULL;
+  uv_timer_stop(timer);
+  uv_unref((uv_handle_t *)timer);
+  uv_work_t *req = g_new0(uv_work_t, 1);
+  req->data = timer;
+  uv_queue_work(uv_default_loop(), req, free_later, (uv_after_work_cb)after_free_later);
 }
 
 static dbus_bool_t
@@ -127,8 +141,6 @@ remove_timeout (DBusTimeout *timeout, void *data) {
   if (timer == NULL)
     return;
 
-  uv_timer_stop(timer);
-  uv_unref((uv_handle_t *)timer);
   dbus_timeout_set_data (timeout, NULL, NULL);
 }
 
