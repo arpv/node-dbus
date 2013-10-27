@@ -14,13 +14,12 @@ namespace ndbus {
 extern "C" {
 
 static void
-free_later (uv_work_t* req) {
-}
-
-static void
-after_free_later (uv_work_t* req) {
-  if (req->data != NULL) g_free(req->data);
-  g_free(req);
+handle_asyncw_freed (void *data) {
+  uv_async_t *asyncw = (uv_async_t *)data;
+  if (asyncw == NULL)
+    return;
+  asyncw->data = NULL;
+  uv_close((uv_handle_t *)asyncw, (uv_close_cb)g_free);
 }
 
 static void
@@ -31,10 +30,7 @@ handle_iow_freed (void *data) {
   iow->data = NULL;
   uv_ref((uv_handle_t *)iow);
   uv_poll_stop(iow);
-  uv_close((uv_handle_t *)iow, NULL);
-  uv_work_t *req = g_new0(uv_work_t, 1);
-  req->data = iow;
-  uv_queue_work(uv_default_loop(), req, free_later, (uv_after_work_cb)after_free_later);
+  uv_close((uv_handle_t *)iow, (uv_close_cb)g_free);
 }
 
 static void
@@ -113,9 +109,7 @@ handle_timeout_freed (void *data) {
   timer->data =  NULL;
   uv_timer_stop(timer);
   uv_unref((uv_handle_t *)timer);
-  uv_work_t *req = g_new0(uv_work_t, 1);
-  req->data = timer;
-  uv_queue_work(uv_default_loop(), req, free_later, (uv_after_work_cb)after_free_later);
+  uv_close((uv_handle_t *)timer, (uv_close_cb)g_free);
 }
 
 static dbus_bool_t
@@ -188,7 +182,7 @@ NDbusConnectionSetupWithEvLoop (DBusConnection *bus_cnxn) {
   uv_unref((uv_handle_t *)asyncw);
   dbus_connection_set_wakeup_main_function(bus_cnxn,
       wakeup_ev,
-      (void *)asyncw, g_free);
+      (void *)asyncw, handle_asyncw_freed);
 
   return true;
 }
