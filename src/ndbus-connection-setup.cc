@@ -14,13 +14,23 @@ namespace ndbus {
 extern "C" {
 
 static void
+handle_asyncw_freed (void *data) {
+  uv_async_t *asyncw = (uv_async_t *)data;
+  if (asyncw == NULL)
+    return;
+  asyncw->data = NULL;
+  uv_close((uv_handle_t *)asyncw, (uv_close_cb)g_free);
+}
+
+static void
 handle_iow_freed (void *data) {
   uv_poll_t *iow = (uv_poll_t*)data;
   if(iow == NULL)
     return;
   iow->data = NULL;
-  g_free(iow);
-  iow = NULL;
+  uv_ref((uv_handle_t *)iow);
+  uv_poll_stop(iow);
+  uv_close((uv_handle_t *)iow, (uv_close_cb)g_free);
 }
 
 static void
@@ -74,9 +84,6 @@ remove_watch (DBusWatch *watch, void *data) {
   if (iow == NULL)
     return;
 
-  uv_ref((uv_handle_t *)iow);
-  uv_poll_stop(iow);
-  uv_close((uv_handle_t *)iow, NULL);
   dbus_watch_set_data(watch, NULL, NULL);
 }
 
@@ -100,8 +107,9 @@ handle_timeout_freed (void *data) {
   if(timer == NULL)
     return;
   timer->data =  NULL;
-  g_free(timer);
-  timer = NULL;
+  uv_timer_stop(timer);
+  uv_unref((uv_handle_t *)timer);
+  uv_close((uv_handle_t *)timer, (uv_close_cb)g_free);
 }
 
 static dbus_bool_t
@@ -127,8 +135,6 @@ remove_timeout (DBusTimeout *timeout, void *data) {
   if (timer == NULL)
     return;
 
-  uv_timer_stop(timer);
-  uv_unref((uv_handle_t *)timer);
   dbus_timeout_set_data (timeout, NULL, NULL);
 }
 
@@ -176,7 +182,7 @@ NDbusConnectionSetupWithEvLoop (DBusConnection *bus_cnxn) {
   uv_unref((uv_handle_t *)asyncw);
   dbus_connection_set_wakeup_main_function(bus_cnxn,
       wakeup_ev,
-      (void *)asyncw, g_free);
+      (void *)asyncw, handle_asyncw_freed);
 
   return true;
 }
