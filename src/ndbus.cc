@@ -19,12 +19,13 @@ static DBusConnection *session_bus;
 Persistent<Object> global_target;
 
 #define NDBUS_DEFINE_STRING_CONSTANT(target, constant)          \
-                (target)->Set(v8::String::NewSymbol(#constant), \
-                v8::String::New(constant),                      \
+                (target)->ForceSet(v8::String::NewFromUtf8(isolate, #constant, v8::String::kInternalizedString), \
+                v8::String::NewFromUtf8(isolate, constant),                                                 \
                 static_cast<v8::PropertyAttribute>(v8::ReadOnly|v8::DontDelete))
 
-Handle<Value> NDbusRemoveMatch (const Arguments & args) {
-  HandleScope scope;
+void NDbusRemoveMatch (const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
 
   gint message_type =
     NDbusGetProperty(args.This(),
@@ -107,11 +108,12 @@ Handle<Value> NDbusRemoveMatch (const Arguments & args) {
   g_free(key);
   if (!removed)
     NDBUS_EXCPN_NOMATCH;
-  return scope.Close(Boolean::New(TRUE));
+  args.GetReturnValue().Set(TRUE);
 }
 
-Handle<Value> NDbusAddMatch (const Arguments & args) {
-  HandleScope scope;
+void NDbusAddMatch (const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
 
   gint message_type =
     NDbusGetProperty(args.This(),
@@ -163,11 +165,11 @@ Handle<Value> NDbusAddMatch (const Arguments & args) {
   if (NDbusIsMatchAdded(object_list, args.This())) {
     g_free(match_str);
     g_free(key);
-    return scope.Close(Boolean::New(TRUE));
+    args.GetReturnValue().Set(TRUE);
   }
 
   NDbusObjectInfo *listener = g_new0(NDbusObjectInfo, 1);
-  listener->object = Persistent<Object>::New(args.This());
+  listener->object.Reset(isolate, args.This());
   object_list = g_slist_prepend(object_list, (void *) listener);
 
   g_hash_table_insert(signal_watchers, g_strdup(key), object_list);
@@ -177,11 +179,12 @@ Handle<Value> NDbusAddMatch (const Arguments & args) {
 
   g_free(match_str);
   g_free(key);
-  return scope.Close(Boolean::New(TRUE));
+  args.GetReturnValue().Set(TRUE);
 }
 
-Handle<Value> NDbusSendSignal (const Arguments & args) {
-  HandleScope scope;
+void NDbusSendSignal (const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
 
   NDbusVariantPolicy variantPolicy = (NDbusVariantPolicy)NDbusGetProperty(args.This(),
         NDBUS_PROPERTY_VARIANT_POLICY)->IntegerValue();
@@ -232,7 +235,8 @@ Handle<Value> NDbusSendSignal (const Arguments & args) {
   Local<Object> append_error;
   if (!NDbusMessageAppendArgs (msg, args.This(), &append_error, variantPolicy)) {
     dbus_message_unref(msg);
-    return ThrowException(append_error);
+    isolate->ThrowException(append_error);
+    return;
   }
 
   if (!dbus_connection_send(bus_cnxn, msg, NULL)) {
@@ -242,11 +246,12 @@ Handle<Value> NDbusSendSignal (const Arguments & args) {
   dbus_connection_flush(bus_cnxn);
   dbus_message_unref(msg);
 
-  return scope.Close(Boolean::New(true));
+  args.GetReturnValue().Set(TRUE);
 }
 
-Handle<Value> NDbusInvokeMethod (const Arguments & args) {
-  HandleScope scope;
+void NDbusInvokeMethod (const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
 
   NDbusVariantPolicy variantPolicy = (NDbusVariantPolicy)NDbusGetProperty(args.This(),
         NDBUS_PROPERTY_VARIANT_POLICY)->IntegerValue();
@@ -306,7 +311,8 @@ Handle<Value> NDbusInvokeMethod (const Arguments & args) {
   Local<Object> append_error;
   if (!NDbusMessageAppendArgs (msg, args.This(), &append_error, variantPolicy)) {
     dbus_message_unref(msg);
-    return ThrowException(append_error);
+    isolate->ThrowException(append_error);
+    return;
   }
 
   if (message_type == DBUS_MESSAGE_TYPE_METHOD_RETURN) {
@@ -314,7 +320,8 @@ Handle<Value> NDbusInvokeMethod (const Arguments & args) {
     if (dbus_connection_send_with_reply(bus_cnxn, msg, &pending, timeout)) {
       if (pending) {
         NDbusObjectInfo *info = g_new0(NDbusObjectInfo, 1);
-        info->object = Persistent<Object>::New(args.This());
+
+         info->object.Reset(isolate, args.This());
         dbus_pending_call_set_notify(pending, NDbusHandleMethodReply, (void *)info, NULL);
       } else {
         dbus_message_unref(msg);
@@ -331,20 +338,19 @@ Handle<Value> NDbusInvokeMethod (const Arguments & args) {
     DBusMessage *reply =
       dbus_connection_send_with_reply_and_block(bus_cnxn, msg, timeout, &error);
 
-    Local<Function> func =
-      Local<Function>::Cast(global_target->
-          Get(NDBUS_CB_METHODREPLY));
+    Handle<Object> local_global_target = Local<Object>::New(isolate, global_target);
+    Local<Function> func = Local<Function>::Cast(local_global_target->Get(NDBUS_CB_METHODREPLY));
     const gint argc = 2;
     Local<Value> argv[2];
 
     if (dbus_error_is_set(&error)) {
-      argv[0] = Local<Value> (*Undefined());
+       argv[0] = Undefined(isolate);
       NDBUS_SET_EXCPN(argv[1], error.name, error.message);
       dbus_error_free(&error);
     } else {
       Local<Value> msg_args = NDbusRetrieveMessageArgs(reply);
       argv[0] = msg_args;
-      argv[1] = Local<Value> (*Undefined());
+      argv[1] = Undefined(isolate);
       dbus_message_unref(reply);
     }
 
@@ -357,11 +363,12 @@ Handle<Value> NDbusInvokeMethod (const Arguments & args) {
   }
 
   dbus_message_unref(msg);
-  return scope.Close(Undefined());
+  args.GetReturnValue().Set(TRUE);
 }
 
-Handle<Value> NDbusInit (const Arguments &args) {
-  HandleScope scope;
+void NDbusInit (const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
 
   gint cnxn_type = NDbusGetProperty(args.This(),
       NDBUS_PROPERTY_BUS)->IntegerValue();
@@ -371,8 +378,10 @@ Handle<Value> NDbusInit (const Arguments &args) {
   gboolean sess_bus = (cnxn_type == DBUS_BUS_SESSION);
 
   DBusConnection *bus_cnxn = sess_bus?session_bus:system_bus;
-  if (bus_cnxn)
-    return Undefined();
+  if (bus_cnxn) {
+    args.GetReturnValue().SetUndefined();
+    return /* Undefined() */;
+  }
 
   DBusError error;
   dbus_error_init(&error);
@@ -390,7 +399,8 @@ Handle<Value> NDbusInit (const Arguments &args) {
     Local<Value> exptn;
     NDBUS_SET_EXCPN(exptn, error.name, error.message);
     dbus_error_free(&error);
-    return ThrowException(exptn);
+    isolate->ThrowException(exptn);
+    return;
   }
 
   GHashTable *signal_watchers =
@@ -410,11 +420,12 @@ Handle<Value> NDbusInit (const Arguments &args) {
     NDBUS_EXCPN_OOM;
 
   dbus_connection_add_filter(bus_cnxn, NDbusMessageFilter, (void *)signal_watchers, NULL);
-  return Undefined();
+  args.GetReturnValue().SetUndefined();
 }
 
-Handle<Value> NDbusClose (const Arguments &args) {
-  HandleScope scope;
+void NDbusClose (const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
 
   gint cnxn_type = args[0]->IntegerValue();
   gboolean sess_bus = (cnxn_type == DBUS_BUS_SESSION);
@@ -440,14 +451,15 @@ Handle<Value> NDbusClose (const Arguments &args) {
         system_bus = NULL;
     }
   }
-  return Undefined();
+  args.GetReturnValue().SetUndefined();
 }
 
 extern "C" {
 void init (Handle<Object> target) {
-  HandleScope scope;
-  Handle<Object> constants = Object::New();
-  target->Set(String::NewSymbol("constants"), constants);
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
+  Handle<Object> constants = Object::New(isolate);
+  target->Set(v8::String::NewFromUtf8(isolate, "constants", v8::String::kInternalizedString), constants);
 
   NODE_DEFINE_CONSTANT(constants, DBUS_BUS_SESSION);
   NODE_DEFINE_CONSTANT(constants, DBUS_BUS_SYSTEM);
@@ -518,7 +530,7 @@ void init (Handle<Object> target) {
   NODE_SET_METHOD(target, "addMatch", NDbusAddMatch);
   NODE_SET_METHOD(target, "removeMatch", NDbusRemoveMatch);
 
-  global_target = Persistent<Object>::New(target);
+  global_target.Reset(isolate, target);
 }
 NODE_MODULE(ndbus, init);
 }

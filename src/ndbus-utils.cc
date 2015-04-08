@@ -57,7 +57,8 @@ NDbusIsValidV8Array (const Local<Value> array) {
 
 static Local<Value>
 NDbusExtractMessageArgs (DBusMessageIter *reply_iter) {
-  HandleScope scope;
+  Isolate* isolate = Isolate::GetCurrent();
+  EscapableHandleScope scope(isolate);
 
   Local<Value> ret;
   switch (dbus_message_iter_get_arg_type(reply_iter)) {
@@ -65,7 +66,7 @@ NDbusExtractMessageArgs (DBusMessageIter *reply_iter) {
       {
         gboolean value;
         dbus_message_iter_get_basic(reply_iter, &value);
-        ret = Boolean::New(value)->ToBoolean();
+        ret = Boolean::New(isolate, value)->ToBoolean();
         break;
       }
     case DBUS_TYPE_BYTE:
@@ -73,7 +74,7 @@ NDbusExtractMessageArgs (DBusMessageIter *reply_iter) {
         guint8 value;
         dbus_message_iter_get_basic(reply_iter, &value);
         //up-casting!
-        ret = Uint32::NewFromUnsigned(value);
+        ret = Uint32::NewFromUnsigned(isolate, value);
         break;
       }
     case DBUS_TYPE_UINT16:
@@ -81,14 +82,14 @@ NDbusExtractMessageArgs (DBusMessageIter *reply_iter) {
         guint16 value;
         dbus_message_iter_get_basic(reply_iter, &value);
         //up-casting!
-        ret = Uint32::NewFromUnsigned(value);
+        ret = Uint32::NewFromUnsigned(isolate, value);
         break;
       }
     case DBUS_TYPE_UINT32:
       {
         guint32 value;
         dbus_message_iter_get_basic(reply_iter, &value);
-        ret = Uint32::NewFromUnsigned(value);
+        ret = Uint32::NewFromUnsigned(isolate, value);
         break;
       }
     case DBUS_TYPE_UINT64:
@@ -96,7 +97,7 @@ NDbusExtractMessageArgs (DBusMessageIter *reply_iter) {
         guint64 value;
         dbus_message_iter_get_basic(reply_iter, &value);
         //up-casting!
-        ret = Number::New(value);
+        ret = Number::New(isolate, value);
         break;
       }
     case DBUS_TYPE_INT16:
@@ -104,14 +105,14 @@ NDbusExtractMessageArgs (DBusMessageIter *reply_iter) {
         gint16 value;
         dbus_message_iter_get_basic(reply_iter, &value);
         //up-casting!
-        ret = Int32::New(value);
+        ret = Int32::New(isolate, value);
         break;
       }
     case DBUS_TYPE_INT32:
       {
         gint32 value;
         dbus_message_iter_get_basic(reply_iter, &value);
-        ret = Int32::New(value);
+        ret = Int32::New(isolate, value);
         break;
       }
     case DBUS_TYPE_INT64:
@@ -119,7 +120,7 @@ NDbusExtractMessageArgs (DBusMessageIter *reply_iter) {
       {
         gdouble value;
         dbus_message_iter_get_basic(reply_iter, &value);
-        ret = Number::New(value);
+        ret = Number::New(isolate, value);
         break;
       }
     case DBUS_TYPE_SIGNATURE:
@@ -128,7 +129,7 @@ NDbusExtractMessageArgs (DBusMessageIter *reply_iter) {
       {
         gchar *value;
         dbus_message_iter_get_basic(reply_iter, &value);
-        ret = v8::String::New(value, strlen(value));
+        ret = v8::String::NewFromUtf8(isolate, value);
         break;
       }
     case DBUS_TYPE_STRUCT:
@@ -141,7 +142,7 @@ NDbusExtractMessageArgs (DBusMessageIter *reply_iter) {
             == DBUS_TYPE_DICT_ENTRY);
         gint currentType;
         if (dictionary) {
-          Local<Object> obj = Object::New();
+          Local<Object> obj = Object::New(isolate);
           while((currentType = dbus_message_iter_get_arg_type (&sub_iter)) != DBUS_TYPE_INVALID) {
             DBusMessageIter dict_iter;
             dbus_message_iter_recurse(&sub_iter, &dict_iter);
@@ -154,12 +155,12 @@ NDbusExtractMessageArgs (DBusMessageIter *reply_iter) {
             Local<Value> value =
               NDbusExtractMessageArgs(&dict_iter);
 
-            obj->Set(key, value, None);
+            obj->ForceSet(key, value, None);
             dbus_message_iter_next(&sub_iter);
           }
           ret = obj;
         } else {
-          Local<Array> arr = Array::New();
+          Local<Array> arr = Array::New(isolate);
           gint i = 0;
           while((currentType = dbus_message_iter_get_arg_type (&sub_iter)) != DBUS_TYPE_INVALID) {
             arr->Set(i++, NDbusExtractMessageArgs(&sub_iter));
@@ -178,12 +179,12 @@ NDbusExtractMessageArgs (DBusMessageIter *reply_iter) {
       }
     default:
       {
-        ret = Local<Value> (*Undefined());
-        //ret = v8::String::New("");
+        ret = Undefined(isolate);
+//         ret = v8::String::NewFromUtf8(isolate, "");
         break;
       }
   }
-  return scope.Close(ret);
+  return scope.Escape(ret);
 }
 
 /**
@@ -514,8 +515,10 @@ NDbusRetrieveSignalListners (GHashTable *signal_watchers,
 
       while(tmp != NULL) {
         NDbusObjectInfo *info = (NDbusObjectInfo *)tmp->data;
-        if (NDbusIsValidV8Value(info->object))
-          Local<Array>::Cast(*listeners)->Set(index++, info->object);
+        v8::Local<v8::Object> object = v8::Local<v8::Object>::New(Isolate::GetCurrent(), info->object);
+
+        if (NDbusIsValidV8Value(object))
+          Local<Array>::Cast(*listeners)->Set(index++, object);
         tmp = g_slist_next(tmp);
       }
     }
@@ -550,7 +553,7 @@ NDbusV8StringToCStr (const Local<Value> str) {
 Local<Value>
 NDbusGetProperty (const Local<Object> obj,
     const gchar *name) {
-  return obj->Get(v8::String::New(name));
+  return obj->Get(v8::String::NewFromUtf8(Isolate::GetCurrent(), name));
 }
 
 gboolean
@@ -559,9 +562,10 @@ NDbusIsMatchAdded (GSList *list, Local<Object> obj) {
     GSList *tmp = list;
     while (tmp != NULL) {
       NDbusObjectInfo *info = (NDbusObjectInfo *) tmp->data;
+      v8::Local<v8::Object> object = v8::Local<v8::Object>::New(Isolate::GetCurrent(), info->object);
       if (info &&
-          NDbusIsValidV8Value(info->object) &&
-          (info->object == obj))
+          NDbusIsValidV8Value(object) &&
+          (object == obj))
         return TRUE;
       tmp = g_slist_next(tmp);
     }
@@ -572,7 +576,7 @@ NDbusIsMatchAdded (GSList *list, Local<Object> obj) {
 Local<Value>
 NDbusRetrieveMessageArgs(DBusMessage *msg) {
   DBusMessageIter msg_iter;
-  Local<Array> args_array = Array::New();
+  Local<Array> args_array = Array::New(Isolate::GetCurrent());
   if (dbus_message_iter_init(msg, &msg_iter)) {
     gint i = 0;
     while (dbus_message_iter_get_arg_type(&msg_iter) !=
@@ -622,6 +626,7 @@ NDbusConstructKey (gchar *interface,
 gboolean
 NDbusMessageAppendArgs (DBusMessage *msg,
     Local<Object> obj, Local<Object> *error, NDbusVariantPolicy variantPolicy) {
+  Isolate* isolate = Isolate::GetCurrent();
 
   gchar *signature = NDbusV8StringToCStr(
       NDbusGetProperty(obj, NDBUS_PROPERTY_SIGN));
@@ -676,8 +681,9 @@ NDbusFreeObjectInfo (gpointer data, gpointer user_data) {
   NDbusObjectInfo *info =
     (NDbusObjectInfo *)data;
   if (info) {
-    if (NDbusIsValidV8Value(info->object))
-      info->object.Dispose();
+    v8::Local<v8::Object> object = v8::Local<v8::Object>::New(Isolate::GetCurrent(), info->object);
+    if (NDbusIsValidV8Value(object))
+      info->object.Reset();
     g_free(info);
   }
 }
@@ -685,6 +691,8 @@ NDbusFreeObjectInfo (gpointer data, gpointer user_data) {
 DBusHandlerResult
 NDbusMessageFilter (DBusConnection *cnxn,
     DBusMessage * message, void *user_data) {
+  Isolate* isolate = Isolate::GetCurrent();
+
   if (dbus_message_get_type (message)
       != DBUS_MESSAGE_TYPE_SIGNAL)
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
@@ -712,10 +720,10 @@ NDbusMessageFilter (DBusConnection *cnxn,
     const gchar *destination  = dbus_message_get_destination(message);
 
     if (interface && member) {
-      HandleScope scope;
+      HandleScope scope(isolate);
       gchar *key = g_strconcat(interface,
           "-", member, NULL);
-      Local<Array> object_list = Array::New();
+      Local<Array> object_list = Array::New(isolate);
 
       NDbusRetrieveSignalListners(signal_watchers, key, &object_list);
 
@@ -742,20 +750,37 @@ NDbusMessageFilter (DBusConnection *cnxn,
       g_free(key);
 
       if (NDbusIsValidV8Array(object_list)) {
-        Local<Object> signal = Object::New();
-        signal->Set(String::New(NDBUS_PROPERTY_INTERFACE), String::New(interface));
-        signal->Set(String::New(NDBUS_PROPERTY_MEMBER), String::New(member));
-        signal->Set(String::New(NDBUS_PROPERTY_PATH), object_path ? String::New(object_path) : Null());
-        signal->Set(String::New(NDBUS_PROPERTY_SENDER), sender ? String::New(sender) : Null());
-        signal->Set(String::New(NDBUS_PROPERTY_DEST), destination ? String::New(destination) : Null());
+        Local<Object> signal = Object::New(isolate);
+        signal->Set(String::NewFromUtf8(isolate, NDBUS_PROPERTY_INTERFACE), String::NewFromUtf8(isolate, interface));
+        signal->Set(String::NewFromUtf8(isolate, NDBUS_PROPERTY_MEMBER), String::NewFromUtf8(isolate, member));
+        if (object_path) {
+            signal->Set(String::NewFromUtf8(isolate, NDBUS_PROPERTY_PATH), String::NewFromUtf8(isolate, object_path));
+        }
+        else {
+            signal->Set(String::NewFromUtf8(isolate, NDBUS_PROPERTY_PATH), Null(isolate));
+        }
+        if (sender) {
+            signal->Set(String::NewFromUtf8(isolate, NDBUS_PROPERTY_SENDER), String::NewFromUtf8(isolate, sender));
+        }
+        else {
+            signal->Set(String::NewFromUtf8(isolate, NDBUS_PROPERTY_SENDER), Null(isolate));
+        }
+        if (destination) {
+            signal->ForceSet(String::NewFromUtf8(isolate, NDBUS_PROPERTY_DEST), String::NewFromUtf8(isolate, destination));
+        }
+        else {
+            signal->ForceSet(String::NewFromUtf8(isolate, NDBUS_PROPERTY_DEST), Null(isolate));
+        }
+
         Local<Value> args = NDbusRetrieveMessageArgs(message);
         const gint argc = 3;
         Local<Value> argv[argc];
         argv[0] = object_list;
         argv[1] = signal;
         argv[2] = args;
-        Local<Function> func = Local<Function>::
-          Cast(global_target->Get(NDBUS_CB_SIGNALRECEIPT));
+
+        Handle<Object> local_global_target = Local<Object>::New(isolate, global_target);
+        Local<Function> func = Local<Function>::Cast(local_global_target->Get(NDBUS_CB_SIGNALRECEIPT));
 
         if (NDbusIsValidV8Value(func) &&
             func->IsFunction())
@@ -779,38 +804,38 @@ NDbusHandleMethodReply (DBusPendingCall *pending,
     return;
   }
 
-  HandleScope scope;
+  Isolate* isolate = Isolate::GetCurrent();
+  HandleScope scope(isolate);
 
   DBusMessage *reply;
   NDbusObjectInfo *info = (NDbusObjectInfo *)user_data;
 
-  if (NDbusIsValidV8Value(info->object)) {
-    Handle<Object> object = Handle<Object>::Cast(info->object);
-    Local<Function> func =
-      Local<Function>::Cast(global_target->
-          Get(NDBUS_CB_METHODREPLY));
+  v8::Local<v8::Object> object = v8::Local<v8::Object>::New(Isolate::GetCurrent(), info->object);
+  if (NDbusIsValidV8Value(object)) {
+    Handle<Object> local_global_target = Local<Object>::New(isolate, global_target);
+    Local<Function> func = Local<Function>::Cast(local_global_target->Get(NDBUS_CB_METHODREPLY));
     const gint argc = 2;
     Local<Value> argv[2];
 
     reply = dbus_pending_call_steal_reply(pending);
 
     if(!reply) {
-      argv[0] = Local<Value> (*Undefined());
+      argv[0] = Undefined(isolate);
       NDBUS_SET_EXCPN(argv[1], DBUS_ERROR_NO_REPLY, NDBUS_ERROR_NOREPLY);
     } else if (async_message_error(reply)){
       DBusError err;
       dbus_error_init(&err);
       dbus_set_error_from_message(&err, reply);
-      argv[0] = Local<Value> (*Undefined());
+      argv[0] = Undefined(isolate);
       NDBUS_SET_EXCPN(argv[1], err.name, err.message);
       dbus_error_free(&err);
     } else if (dbus_message_get_type(reply) ==
         DBUS_MESSAGE_TYPE_METHOD_RETURN) {
       Local<Value> args = NDbusRetrieveMessageArgs(reply);
       argv[0] = args;
-      argv[1] = Local<Value> (*Undefined());
+      argv[1] = Undefined(isolate);
     } else {
-      argv[0] = Local<Value> (*Undefined());
+      argv[0] = Undefined(isolate);
       NDBUS_SET_EXCPN(argv[1], DBUS_ERROR_FAILED, NDBUS_ERROR_REPLY);
     }
 
@@ -821,7 +846,7 @@ NDbusHandleMethodReply (DBusPendingCall *pending,
       g_critical("\nSomeone has messed with the internal  \
           method response handler of dbus.js. 'methodResponse' wont be triggered.");
 
-    info->object.Dispose();
+    info->object.Reset();
     g_free(info);
     if (reply)
       dbus_message_unref(reply);

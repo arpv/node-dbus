@@ -8,6 +8,7 @@
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * */
 
+#include <uv.h>
 #include "ndbus.h"
 
 namespace ndbus {
@@ -96,7 +97,7 @@ watch_toggled (DBusWatch *watch, void *data) {
 }
 
 static void
-timeout_cb (uv_timer_t *w, gint status) {
+timeout_cb (uv_timer_t *w) {
   DBusTimeout *timeout = (DBusTimeout*)w->data;
   dbus_timeout_handle(timeout);
 }
@@ -153,7 +154,7 @@ wakeup_ev (void *data) {
 }
 
 static void
-asyncw_cb (uv_async_t *w, gint status) {
+asyncw_cb (uv_async_t *w) {
   DBusConnection *bus_cnxn = (DBusConnection *)w->data;
   dbus_connection_read_write(bus_cnxn, 0);
   while (dbus_connection_dispatch(bus_cnxn) ==

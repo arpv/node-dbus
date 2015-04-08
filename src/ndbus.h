@@ -32,20 +32,22 @@ namespace ndbus {
 
 #define NDBUS_SET_EXCPN(excpn, name, message) \
   {                                           \
-    excpn = Object::New();                    \
+    excpn = Object::New(isolate);             \
     Local<Object>::Cast(excpn)->              \
-      Set(v8::String::New("name"),            \
-          v8::String::New(name));             \
+      Set(v8::String::NewFromUtf8(isolate, "name"),   \
+          v8::String::NewFromUtf8(isolate, name));    \
     Local<Object>::Cast(excpn)->              \
-      Set(v8::String::New("message"),         \
-          v8::String::New(message));          \
+      Set(v8::String::NewFromUtf8(isolate, "message"),\
+          v8::String::NewFromUtf8(isolate, message));\
   }
 
 #define NDBUS_THROW_EXCPN(name, message)  \
   {                                       \
+    Isolate* isolate = Isolate::GetCurrent(); \
     Local<Object> excpn;                  \
     NDBUS_SET_EXCPN(excpn, name, message) \
-    return ThrowException(excpn);         \
+    isolate->ThrowException(excpn);       \
+    return;                               \
   }
 
 #define NDBUS_ERROR_REPLY             "Invalid reply from daemon"
@@ -64,8 +66,8 @@ namespace ndbus {
 #define NDBUS_EXCPN_DISCONNECTED      NDBUS_THROW_EXCPN(DBUS_ERROR_DISCONNECTED, "Connection got disconnected")
 #define NDBUS_EXCPN_NOMATCH           NDBUS_THROW_EXCPN(DBUS_ERROR_MATCH_RULE_NOT_FOUND, "The match was already removed or never added.")
 
-#define NDBUS_CB_METHODREPLY          v8::String::New("onMethodResponse")
-#define NDBUS_CB_SIGNALRECEIPT        v8::String::New("onSignalReceipt")
+#define NDBUS_CB_METHODREPLY          v8::String::NewFromUtf8(isolate, "onMethodResponse")
+#define NDBUS_CB_SIGNALRECEIPT        v8::String::NewFromUtf8(isolate, "onSignalReceipt")
 
 /**
  * How should variant in signatures of signals to send be handles.
