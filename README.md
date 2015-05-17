@@ -41,7 +41,8 @@ Dependencies:
 The list of dependencies include:
 
 * [NodeJS][] - ofcourse (&gt;= v0.8.0)
-             - for [NodeJS][] releases &gt;=v0.5.1 & &lt;=v0.7.9, pick branch v0.1.1
+
+  * for [NodeJS][] releases &gt;=v0.5.1 & &lt;=v0.7.9, pick branch v0.1.1
 
 * [libdbus][] - ofcourse
 
@@ -62,7 +63,13 @@ If the dependencies are met,
 
 if you have [NPM][] installed,
 
+for [NodeJS][] releases &gt;=v0.8.0,
+
     npm install node-dbus
+
+for [NodeJS][] releases &gt;=v0.5.1 & &lt;=v0.7.9,
+
+    npm install node-dbus@0.1.1
 
 if you have source and [NPM][], then from the main folder
 
@@ -70,7 +77,7 @@ if you have source and [NPM][], then from the main folder
 
 otherwise from the main folder of source
 
-    node-waf configure build
+    node-gyp configure build
 
 DBusMessage:
 ===============

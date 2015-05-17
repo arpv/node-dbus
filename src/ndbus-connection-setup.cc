@@ -8,10 +8,20 @@
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  * */
 
+#include <uv.h>
 #include "ndbus.h"
 
 namespace ndbus {
 extern "C" {
+
+static void
+handle_asyncw_freed (void *data) {
+  uv_async_t *asyncw = (uv_async_t *)data;
+  if (asyncw == NULL)
+    return;
+  asyncw->data = NULL;
+  uv_close((uv_handle_t *)asyncw, (uv_close_cb)g_free);
+}
 
 static void
 handle_iow_freed (void *data) {
@@ -19,8 +29,9 @@ handle_iow_freed (void *data) {
   if(iow == NULL)
     return;
   iow->data = NULL;
-  g_free(iow);
-  iow = NULL;
+  uv_ref((uv_handle_t *)iow);
+  uv_poll_stop(iow);
+  uv_close((uv_handle_t *)iow, (uv_close_cb)g_free);
 }
 
 static void
@@ -74,9 +85,6 @@ remove_watch (DBusWatch *watch, void *data) {
   if (iow == NULL)
     return;
 
-  uv_ref((uv_handle_t *)iow);
-  uv_poll_stop(iow);
-  uv_close((uv_handle_t *)iow, NULL);
   dbus_watch_set_data(watch, NULL, NULL);
 }
 
@@ -89,7 +97,7 @@ watch_toggled (DBusWatch *watch, void *data) {
 }
 
 static void
-timeout_cb (uv_timer_t *w, gint status) {
+timeout_cb (uv_timer_t *w) {
   DBusTimeout *timeout = (DBusTimeout*)w->data;
   dbus_timeout_handle(timeout);
 }
@@ -100,8 +108,9 @@ handle_timeout_freed (void *data) {
   if(timer == NULL)
     return;
   timer->data =  NULL;
-  g_free(timer);
-  timer = NULL;
+  uv_timer_stop(timer);
+  uv_unref((uv_handle_t *)timer);
+  uv_close((uv_handle_t *)timer, (uv_close_cb)g_free);
 }
 
 static dbus_bool_t
@@ -127,8 +136,6 @@ remove_timeout (DBusTimeout *timeout, void *data) {
   if (timer == NULL)
     return;
 
-  uv_timer_stop(timer);
-  uv_unref((uv_handle_t *)timer);
   dbus_timeout_set_data (timeout, NULL, NULL);
 }
 
@@ -147,7 +154,7 @@ wakeup_ev (void *data) {
 }
 
 static void
-asyncw_cb (uv_async_t *w, gint status) {
+asyncw_cb (uv_async_t *w) {
   DBusConnection *bus_cnxn = (DBusConnection *)w->data;
   dbus_connection_read_write(bus_cnxn, 0);
   while (dbus_connection_dispatch(bus_cnxn) ==
@@ -176,7 +183,7 @@ NDbusConnectionSetupWithEvLoop (DBusConnection *bus_cnxn) {
   uv_unref((uv_handle_t *)asyncw);
   dbus_connection_set_wakeup_main_function(bus_cnxn,
       wakeup_ev,
-      (void *)asyncw, g_free);
+      (void *)asyncw, handle_asyncw_freed);
 
   return true;
 }

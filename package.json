@@ -1,7 +1,7 @@
 {
   "name": "node-dbus",
   "description": "A minimal node based wrapper over libdbus",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "author": "Motorola Mobility, Inc.",
   "maintainers": [
       "Ankur Verma <ankur.verma@motorola.com>",
@@ -12,9 +12,6 @@
     "type" : "git",
     "url": "http://github.com/Motorola-Mobility/node-dbus.git"
   },
-  "engines": ["node >= 0.5.1"],
-  "scripts": {
-    "install": "node-waf configure build"
-  },
+  "engines": ["node >= 0.8.0"],
   "main": "dbus.js"
 }
