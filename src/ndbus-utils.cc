@@ -313,6 +313,30 @@ NDbusMessageAppendArgsReal (DBusMessageIter * iter,
         dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &val);
         break;
       }
+    case DBUS_TYPE_BYTE:
+      {
+        if(value->Int32Value() < 0 || value->Int32Value() > 255)
+          return TYPE_MISMATCH;
+        guint8 val = value->Uint32Value();
+        dbus_message_iter_append_basic(iter, DBUS_TYPE_BYTE, &val);
+        break;
+      }
+      case DBUS_TYPE_INT16:
+      {
+        if(value->Int32Value() < -32768 || value->Int32Value() > 32767)
+          return TYPE_MISMATCH;
+        gint16 val = value->Int32Value();
+        dbus_message_iter_append_basic(iter, DBUS_TYPE_INT16, &val);
+        break;
+      }
+    case DBUS_TYPE_UINT16:
+      {
+        if(value->Int32Value() < 0 || value->Int32Value() > 65535)
+          return TYPE_MISMATCH;
+        guint16 val = value->Uint32Value();
+        dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT16, &val);
+        break;
+      }
     case DBUS_TYPE_INT32:
       {
         if (!value->IsInt32())
