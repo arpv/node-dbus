@@ -116,6 +116,12 @@ NDbusExtractMessageArgs (DBusMessageIter *reply_iter) {
         break;
       }
     case DBUS_TYPE_INT64:
+      {
+        gint64 value;
+        dbus_message_iter_get_basic(reply_iter, &value);
+        ret = Number::New(isolate, value);
+        break;
+      }
     case DBUS_TYPE_DOUBLE:
       {
         gdouble value;
