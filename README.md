@@ -1,3 +1,5 @@
+
+
 Node-DBus
 ===============
 
@@ -243,7 +245,7 @@ Clears any input arguments that were previously appended to the message.
 
 NOTE:
 
-- a call to `appenArgs()` with valid data will implicitly clear any previously appended args.
+- a call to `appendArgs()` with valid data will implicitly clear any previously appended args.
 - internally, the actual appending of input arguments happens during `send()`
 
 **send()**:
